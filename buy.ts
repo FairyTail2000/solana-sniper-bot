@@ -518,15 +518,18 @@ const runListener = async () => {
   );
 
   if (AUTO_SELL) {
+    logger.info(`Starting to listen for wallet changes`);
     const walletSubscriptionId = solanaConnection.onProgramAccountChange(
       TOKEN_PROGRAM_ID,
       async (updatedAccountInfo) => {
+        logger.debug(`Wallet change detected: ${updatedAccountInfo.accountId.toString()}`);
         const accountData = AccountLayout.decode(updatedAccountInfo.accountInfo!.data);
 
         if (updatedAccountInfo.accountId.equals(quoteTokenAssociatedAddress)) {
+          logger.debug(`Skipping update, quote token account: ${updatedAccountInfo.accountId.toString()}`);
           return;
         }
-
+        logger.debug(`Selling: ${updatedAccountInfo.accountId.toString()}`);
         const _ = sell(updatedAccountInfo.accountId, accountData.mint, accountData.amount);
       },
       COMMITMENT_LEVEL,
