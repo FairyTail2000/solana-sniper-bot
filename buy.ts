@@ -167,6 +167,7 @@ export async function processRaydiumPool(id: PublicKey, poolState: LiquidityStat
   if (!shouldBuy(poolState.baseMint.toString())) {
     return;
   }
+  logger.debug("Considering pool: ", poolState.baseMint.toString());
 
   if (!quoteMinPoolSizeAmount.isZero()) {
     const poolSize = new TokenAmount(quoteToken, poolState.swapQuoteInAmount, true);
@@ -187,6 +188,7 @@ export async function processRaydiumPool(id: PublicKey, poolState: LiquidityStat
   }
 
   if (!quoteMaxPoolSizeAmount.isZero()) {
+    logger.debug(`Checking pool size: ${quoteMaxPoolSizeAmount.toFixed()} ${quoteToken.symbol}`);
     const poolSize = new TokenAmount(quoteToken, poolState.swapQuoteInAmount, true);
 
     if (poolSize.gt(quoteMaxPoolSizeAmount)) {
@@ -211,7 +213,7 @@ export async function processRaydiumPool(id: PublicKey, poolState: LiquidityStat
       return;
     }
   }
-
+  logger.info(`Buying pool: ${id.toString()} with ${quoteAmount.toFixed()} ${quoteToken.symbol}`);
   await buy(id, poolState);
 }
 
@@ -251,6 +253,7 @@ async function buy(accountId: PublicKey, accountData: LiquidityStateV4): Promise
     let tokenAccount = existingTokenAccounts.get(accountData.baseMint.toString());
 
     if (!tokenAccount) {
+      logger.info({ mint: accountData.baseMint }, `No token account found, fetching minimal market data`);
       // it's possible that we didn't have time to fetch open book data
       const market = await getMinimalMarketV3(solanaConnection, accountData.marketId, COMMITMENT_LEVEL);
       tokenAccount = saveTokenAccount(accountData.baseMint, market);
@@ -329,16 +332,19 @@ async function buy(accountId: PublicKey, accountData: LiquidityStateV4): Promise
 async function sell(accountId: PublicKey, mint: PublicKey, amount: BigNumberish): Promise<void> {
   let sold = false;
   let retries = 0;
-
+  logger.info(`Selling token: ${mint.toString()}`);
   if (AUTO_SELL_DELAY > 0) {
+    logger.info(`Waiting ${AUTO_SELL_DELAY}ms before selling`);
     await new Promise((resolve) => setTimeout(resolve, AUTO_SELL_DELAY));
   }
 
   do {
+    logger.debug(`Retrying sell: ${retries}/${MAX_SELL_RETRIES}`);
     try {
       const tokenAccount = existingTokenAccounts.get(mint.toString());
 
       if (!tokenAccount) {
+        logger.warn({ mint }, 'No token account found');
         return;
       }
 
@@ -356,7 +362,7 @@ async function sell(accountId: PublicKey, mint: PublicKey, amount: BigNumberish)
         );
         return;
       }
-
+      logger.debug(`Selling ${amount} of ${mint.toString()}`);
       const { innerTransaction } = Liquidity.makeSwapFixedInInstruction(
         {
           poolKeys: tokenAccount.poolKeys!,
