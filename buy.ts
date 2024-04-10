@@ -451,7 +451,7 @@ function loadSnipeList() {
 
 function shouldBuy(key: string): boolean {
   logger.info(`-------------------🤖🔧------------------- `);
-  logger.info(`Processing token: ${processingToken}`)
+  logger.info(`Processing token: ${processingToken} ${key}`);
   return USE_SNIPE_LIST ? snipeList.includes(key) : ONE_TOKEN_AT_A_TIME ? !processingToken : true
 }
 
